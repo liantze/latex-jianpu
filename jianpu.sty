@@ -1,0 +1,241 @@
+\ProvidesPackage{jianpu}[2021/03/31 jianpu.sty 1.0 A very, very simple package for typesetting very, very simplistic jianpu music notation. A personal practice in LaTeX3 really.]
+\RequirePackage{regexpatch}
+\RequirePackage[normalem]{ulem}
+\RequirePackage{stackengine}
+\RequirePackage{musicography}
+\RequirePackage{tikz}
+
+\ExplSyntaxOn
+\dim_new:N \l__jianpu_noteboxwidth_dim
+\dim_set:Nn \l__jianpu_noteboxwidth_dim { 1em }
+
+\dim_new:N \l__jianpu_nbwid_dim
+\dim_new:N \l__jianpu_dotdp_dim
+\tl_new:N \l__jianpu_nbalign_tl
+\int_new:N \g__jianpu_slurtiecounter_int
+\int_gset:Nn \g__jianpu_slurtiecounter_int {0}
+
+\NewDocumentCommand{\setjpnotewidth}{ m }
+  {
+    \dim_set:Nn \l__jianpu_noteboxwidth_dim {#1}
+  }
+
+\NewDocumentCommand{\textdot}{ O{0.25ex} m }
+  {
+    \stackon[#1]{#2}{\bfseries.}
+  }
+
+\NewDocumentCommand{\textudot}{ O{0.15ex} m }
+  {
+    \stackunder[#1]{#2}{\bfseries.}
+  }
+
+\NewDocumentEnvironment { jianpu } { O{} +b }
+  {
+    \group_begin:
+    \tl_set:Nn \l_jianpu_tokens_tl { #2 }
+    \quote
+    \dim_set:Nn \parskip { 0.75\baselineskip }
+    \tl_set:Nn \ULthickness { .4pt }
+    \UL@setULdepth
+    \dim_add:Nn \ULdepth { 1pt }
+    % store argument as token list
+    % traverse the token list
+    \vspace*{-\parskip}
+    \tl_map_inline:Nn \l_jianpu_tokens_tl
+      { \__jianpu_convert_note:n { ##1 } }
+    \endquote \group_end:
+ }
+ { }
+
+\NewDocumentCommand { \jianpuInline } { O{} m }
+  {
+    \,\group_begin:
+    \tl_set:Nn \l_jianpu_tokens_tl { #2 }
+    \dim_set:Nn \l__jianpu_noteboxwidth_dim {0.75em}
+    \tl_set:Nn \ULthickness {.4pt}
+    \UL@setULdepth
+    \dim_add:Nn \ULdepth { 1pt }
+    \tl_set:Nn \l_jianpu_tokens_tl {#2}
+    \tl_map_inline:Nn \l_jianpu_tokens_tl { \__jianpu_convert_note:n { ##1 } }
+    \group_end:\,
+  }
+
+\cs_generate_variant:Nn \regex_match:nnTF {nVTF}
+\cs_generate_variant:Nn \regex_extract_once:nnN {nVN}
+
+\cs_new_protected:Npn \__jianpu_convert_note:n #1 {
+  \tl_set:Nn \l_note_tl {#1}
+  \dim_set_eq:NN \l__jianpu_nbwid_dim \l__jianpu_noteboxwidth_dim
+  \tl_set:Nn \l__jianpu_nbalign_tl { c }
+  %% 如果是个macro直接输出
+  \regex_match:nnTF { \c{.+} } { #1 } { #1 }
+    %% 来，开工。
+    {
+      %% Check if the token starts with [a custom width]
+      \regex_match:nVTF { ^\[(.+)\] } \l_note_tl
+      {
+        \regex_extract_once:nVN { ^\[(.+)\] } \l_note_tl \l_tmpa_seq
+        \dim_set:Nn \l__jianpu_nbwid_dim { \seq_item:Nn \l_tmpa_seq { 2 } }
+        \regex_replace_once:nnN { ^\[(.+)\] } { } \l_note_tl
+      } { }
+
+      \regex_match:nVTF { \^ } \l_note_tl
+      {
+        \regex_replace_all:nnN { \^(.+) }
+        % Is OK
+        {
+          \c{textsuperscript}\cB\{ \c{__jianpu_convert_deco:n} \cB\{  \1 \cE\} \cE\}
+        } \l_note_tl
+        %   { \c{textsuperscript}\cB\{ \1 \cE\} } \l_note_tl
+      } { }
+
+
+      \tl_if_eq:NnT \l_note_tl { - }
+        { \tl_replace_once:Nnn \l_note_tl { - }  { -- } }
+
+      \tl_if_eq:NnT \l_note_tl { . }
+        { \tl_replace_all:Nnn \l_note_tl { . }  { \bfseries\textperiodcentered } }
+
+      \regex_match:nVTF { \|+$ } \l_note_tl
+        { \tl_put_left:Nn \l_note_tl {\large} } { }
+
+      % if there are accidentals make sure at least 1em
+      \regex_match:nVTF{ [\#nb][0-7] } \l_note_tl
+        {
+          \dim_set:Nn \l__jianpu_nbwid_dim
+            { \dim_max:nn { 1em } { \dim_use:N \l__jianpu_nbwid_dim } }
+          \__jianpu_addacc:N \l_note_tl
+        } { }
+
+      %% 很笨的方法，算了不管了。
+      %% 高两度
+      \regex_replace_all:nnN  { ([1-7])'' }
+        { \c{textdot}[0.15ex]\cB\{ \c{textdot}\cB\{ \1 \cE\} \cE\} }
+        \l_note_tl
+
+      %% 高一度
+      \regex_replace_all:nnN  { ([1-7])' }
+        { \c{textdot}\cB\{ \1 \cE\} }
+        \l_note_tl
+
+      %% 如果有=或*_需要改第一个udot的高度（低度）
+      %% 还是笨方法，超级笨。算了算了
+      \dim_set:Nn \l__jianpu_dotdp_dim { 2pt }
+      \regex_match:nnT { \_ } { #1 }
+        { \dim_set:Nn \l__jianpu_dotdp_dim { \dim_eval:n { \l__jianpu_dotdp_dim + 0.5ex } } }
+      \regex_match:nnT { \= } { #1 }
+        { \dim_set:Nn \l__jianpu_dotdp_dim { \dim_eval:n { \l__jianpu_dotdp_dim + 0.75ex } } }
+
+      %% 低两度
+      \regex_replace_all:nnN  { ([1-7]),, }
+        { \c{textudot}[0.15ex]\cB\{
+            \c{textudot}
+              [ \c{dim_use:N} \c{l__jianpu_dotdp_dim} ]
+            \cB\{ \1 \cE\}
+          \cE\} }
+        \l_note_tl
+
+      %% 低一度
+      \regex_replace_all:nnN  { ([1-7]), }
+        { \c{textudot}
+          [ \c{dim_use:N} \c{l__jianpu_dotdp_dim} ]
+          \cB\{ \1 \cE\}
+        }
+        \l_note_tl
+
+      \regex_match:nnTF { \^ } { #1 }
+        { \l_note_tl \kern-0.3ex }
+        { \__jianpu_notebox:NNN \l__jianpu_nbwid_dim \l__jianpu_nbalign_tl \l_note_tl }
+    }
+}
+
+\cs_set_eq:NN \__jianpu_convert_deco:n \__jianpu_convert_note:n
+\xpatchcmd{ \__jianpu_convert_deco:n }
+  { \__jianpu_notebox:NNN \l__jianpu_nbwid_dim \l__jianpu_nbalign_tl \l_note_tl }
+  { \group_begin:
+  %   \dim_set:Nn \l__jianpu_nbwid_dim { 1em }
+    \tl_set:Nn \l__jianpu_nbalign_tl { r }
+    \__jianpu_notebox:NNN \l__jianpu_nbwid_dim \l__jianpu_nbalign_tl \l_note_tl
+    \group_end:
+  }
+  { } { }
+
+\cs_new_protected:Npn \__jianpu_addacc_simple:n #1
+  {
+    \tl_if_eq:nnT { #1 } { b } { \textsuperscript{\fl}\kern-0.1ex }
+    \tl_if_eq:nnT { #1 } { n } { \textsuperscript{\na}\kern-0.1ex }
+    \tl_if_eq:nnT { #1 } { \c_hash_str } { \textsuperscript{\sh}\kern-0.1ex }
+  }
+
+\cs_new_protected:Npn \__jianpu_addacc:N #1
+  {
+    \regex_match:nVTF { b[0-7] } #1
+      { \tl_replace_all:Nnn #1 { b } { \textsuperscript{\fl}\kern-0.1ex } } { }
+
+    \regex_match:nVTF { n[0-7] } #1
+      { \tl_replace_all:Nnn #1 { n } { \textsuperscript{\na}\kern-0.1ex } } { }
+
+    \regex_match:nVTF { \#[0-7] } #1
+      { \regex_replace_all:nnN { \# }  { \c{textsuperscript} \cB\{ \c{sh} \cE\} \c{kern}-0.1ex} #1 } { }
+  }
+
+
+\cs_new_protected:Npn \__jianpu_notebox:NNN #1 #2 #3
+  {
+    \tl_set:NV \l_nb_tl { #3 }
+    \group_begin:
+    \regex_match:nVTF { \= }  \l_nb_tl
+      {
+        \tl_remove_all:Nn \l_nb_tl { = }
+        \uuline { \makebox[#1][#2] { \l_nb_tl } }
+      }
+      {
+        \regex_match:nVTF { [_*] }  \l_nb_tl
+          {
+            \group_begin:
+              \regex_replace_all:nnN { \_ } {} \l_nb_tl
+              \tl_remove_all:Nn \l_nb_tl { * }
+              \UL@setULdepth
+              %% Assuming underlines are at default thickness 0.2em
+              \dim_add:Nn \ULdepth { -1.4pt }
+              \uline { \makebox[#1][#2] { \l_nb_tl } }
+            \group_end:
+          }
+          {
+            \makebox[#1][#2]{\l_nb_tl} %
+          }
+      }
+    \group_end:
+  }
+
+
+\NewDocumentCommand{ \slurB } { O{0pt} O{0pt} }
+  {
+    \int_gincr:N \g__jianpu_slurtiecounter_int
+    \dim_set:Nn \l_tmpa_dim { \dim_eval:n {0.9em + #1} }
+    \dim_set:Nn \l_tmpb_dim { \dim_eval:n {0.5em + #2} }
+    \tikz[remember~picture,overlay]
+      {
+        \coordinate [shift={(\l_tmpb_dim,\l_tmpa_dim)}] (S \int_use:N \g__jianpu_slurtiecounter_int begin);
+      }
+  }
+\NewDocumentCommand{ \slurE } { O{0pt} O{0pt} }
+  {
+    \dim_set:Nn \l_tmpa_dim { \dim_eval:n {0.9em + #1} }
+    \dim_set:Nn \l_tmpb_dim { \dim_eval:n {-0.5em + #2} }
+    \tikz[remember~picture,overlay]
+      {
+        \coordinate [shift={(\l_tmpb_dim,\l_tmpa_dim)}] (S \int_use:N \g__jianpu_slurtiecounter_int end);
+        \draw[bend~left=60]
+          (S \int_use:N \g__jianpu_slurtiecounter_int begin)
+          to
+          (S \int_use:N \g__jianpu_slurtiecounter_int end);
+      }
+  }
+
+\NewDocumentCommand{ \tieB } { } { \slurB }
+\NewDocumentCommand{ \tieE } { } { \slurE }
+
+\ExplSyntaxOff
+\endinput
