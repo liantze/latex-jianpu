@@ -1,4 +1,5 @@
-\documentclass[11pt,fontset=ubuntu]{ctexart}
+\documentclass[fontset=ubuntu]{ctexart}
+\usepackage{xcolor}
 \usepackage{geometry}
 \geometry{hmargin=3cm,vmargin=2.5cm}
 \usepackage{jianpu}
@@ -7,6 +8,7 @@
 \tcbuselibrary{minted}
 \usepackage{FiraMono}
 \usepackage[lf]{FiraSans}
+\setminted{breaksymbolleft={},}
 
 \title{一个简陋的简谱宏包}
 \author{}
@@ -43,9 +45,9 @@
 \begin{tcblisting}{}
 \begin{jianpu}
 {0_} {5,_} \; {1_} {2_} | 3 {3_} {3_} 4 4 | 5
-\slurB {2_} {3_} \slurE 3. {2=} {2=} |
-2 {1_} \slurB {7,_} 1 \slurE .  {3=}{3=} | 3 {2_} 2. \\
-~い \; とお~しいひとの~ため~に~ いま~なにがー~でき~るかな
+\slurB {2_} {3_} \slurE {3.} {2=} {2=} |
+2 {1_} \slurB {7,_} {1.} {\slurE[0pt][-.5em]} {3=}{3=}  | 3 {2_} {2.} \\
+~い \; とお~しいひとの~ため~に \enspace いま~なにがー \enspace でき~るかな
 \end{jianpu}
 \end{tcblisting}
 
@@ -54,8 +56,8 @@
 \begin{tcblisting}{}
 \setjpnotewidth{1.2\ccwd}
 \begin{jianpu}
-3 {6,} \; {#5,_} {6,_} {7,_} {2_} | 1 {6,} \; {7,=} {1_} {2_} {4_} | 3 . {3_} \; {2_} {3_} {4_} {6_} | {#5} 4 3 2 | \\
-叮咚\;我有一个~秘密\;悄悄告诉~你~欢\;迎你来到~天堂入口
+3 {6,} \; {#5,_} {6,_} {7,_} {2_} | 1 {6,} \; {7,=} {1_} {2_} {4_} | {3.}  {3_} \; {2_} {3_} {4_} {6_} | {#5} 4 3 2 | \\
+叮咚\;我有一个~秘密\;悄悄告诉~你 \enspace 欢\;迎你来到~天堂入口
 \end{jianpu}
 \end{tcblisting}
 
@@ -64,8 +66,8 @@
 \begin{tcblisting}{}
 \setjpnotewidth{1.5em}
 \begin{jianpu}
-1. {2_} 3. {1_} | 3 {[2.75em]1} 3 - | \\
-\small {Doe} , a {deer} , a ~ {fe-} {[2.75em]male} {[2.5em]deer}
+{1.} {2_} {3.} {1_} | 3 {[2.75em]1} 3 - | \\
+\small {Doe,} \enspace a {deer,} \enspace a ~ {fe-} {[2.75em]male} {[2.5em]deer}
 \end{jianpu}
 \end{tcblisting}
 

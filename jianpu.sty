@@ -1,6 +1,15 @@
-\ProvidesPackage{jianpu}[2021/03/31 jianpu.sty 1.0 A very, very simple package for typesetting very, very simplistic jianpu music notation. A personal practice in LaTeX3 really.]
+\ProvidesPackage{jianpu}[2021/05/23 jianpu.sty 1.0.1 A very, very simple package for typesetting very, very simplistic jianpu music notation. A personal practice in LaTeX3 really.]
 \RequirePackage{regexpatch}
 \RequirePackage[normalem]{ulem}
+% https://tex.stackexchange.com/a/538308/226
+\protected\def\uuline{\leavevmode \bgroup
+ \UL@setULdepth
+ \ifx\UL@on\UL@onin \advance\ULdepth2.8\p@\fi
+ \let\ULleaders\cleaders % added
+ % use \UL@pixel widths below
+ \markoverwith{\lower\ULdepth\hbox{\kern-0.5\UL@pixel
+    \vbox{\hrule width3\UL@pixel\kern1\p@\hrule}\kern-0.5\UL@pixel}}%
+ \ULon}
 \RequirePackage{stackengine}
 \RequirePackage{musicography}
 \RequirePackage{tikz}
@@ -94,8 +103,10 @@
       \tl_if_eq:NnT \l_note_tl { - }
         { \tl_replace_once:Nnn \l_note_tl { - }  { -- } }
 
-      \tl_if_eq:NnT \l_note_tl { . }
-        { \tl_replace_all:Nnn \l_note_tl { . }  { \bfseries\textperiodcentered } }
+    %% v1.0.1: 改变了一下附点音符的处理
+    %   \tl_if_eq:NnT \l_note_tl { . }
+    \regex_match:nVTF { \.$ } \l_note_tl
+        { \tl_replace_all:Nnn \l_note_tl { . }  { \makebox[0pt]{\hspace{.75em}\bfseries\textperiodcentered} } } {}
 
       \regex_match:nVTF { \|+$ } \l_note_tl
         { \tl_put_left:Nn \l_note_tl {\large} } { }
@@ -147,6 +158,8 @@
       \regex_match:nnTF { \^ } { #1 }
         { \l_note_tl \kern-0.3ex }
         { \__jianpu_notebox:NNN \l__jianpu_nbwid_dim \l__jianpu_nbalign_tl \l_note_tl }
+      %% v1.0.1: 改变了一下附点音符的处理
+      \regex_match:nnT { \.$ } { #1 } { \enspace }
     }
 }
 
